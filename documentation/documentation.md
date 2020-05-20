@@ -66,6 +66,15 @@ type Point struct {
 When implementing the `getProducts()` method which uses OFFSET and LIMIT for pagination, I immediatelly had to think of this:  
 https://use-the-index-luke.com/no-offset
 
+Also, I think that `products` is not the right name for a SQL table, as those names should not be plural.
+Additionally, this part in the TestUpdateProduct function does not really make sense:
+```
+if m["name"] == originalProduct["name"] {
+		t.Errorf("Expected the name to change from '%v' to '%v'. Got '%v'", originalProduct["name"], m["name"], m["name"])
+	}
+```
+In case those members are the same, the error message does not help anything in terms of telling us what is expected and what is actual.
+
 I like how Gorilla Mux allows us to specify that the id should by numeric by using regex
 
 ### Result:
@@ -75,13 +84,13 @@ I like how Gorilla Mux allows us to specify that the id should by numeric by usi
 
 ## Own features
 
-### Feature 1 - Order 66
+### Feature 1 - Order 66 (I hope you saw Star Wars Episode III)
 
-Order 66: See all products as traits and thus eliminate / delete them by dropping the whole table.  
+![](https://i.pinimg.com/originals/f4/8f/f6/f48ff6788b636c39117b0e8fb0b4f3d0.jpg)
+
+Idea Order 66: Treat all products as traits and thus eliminate / delete them by dropping the whole table.  
 Order 66 should be executed when sending a *Delete* request to `/order/66`.   
 Afterwards, all requests to find, update or insert any product will end in an internal server error as the tables are only created upon (test) initialization  
-
-
 
 Tests for the order 66:
 
@@ -152,6 +161,121 @@ func (a *App) initializeRoutes() {
 ```
 
 Any tests run after this one will still succeed as the table gets initialized for every request.
+
+### Feature 2 - Update price only (Or: *A New Hope* for something more serious)
+
+Idea: Using a PATCH request to update a single field of an product only.
+
+Changes `model.go`:
+
+```
+func updateProductField(db *sql.DB, id int, fieldName string, value interface{}) error {
+	_, err :=
+		db.Exec("UPDATE products SET $2=$3 WHERE id=$1", id, fieldName, value)
+
+	return err
+}
+```
+
+`app.go`:
+
+```
+// updateField Updates a single field of a product
+func (a *App) updateField(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid product ID")
+		return
+	}
+	fieldName := vars["field"]
+	newValue := vars["value"]
+
+	if err := updateProductField(a.DB, id, fieldName, newValue); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, map[string]string{"result": "success"})
+}
+
+// initializeRoutes Initializes the routes of the app
+func (a *App) initializeRoutes() {
+    //...
+	a.Router.HandleFunc("/product/{id:[0-9]+}/{field}/{value}", a.updateField).Methods("PATCH")
+	//...
+}
+```
+
+`main_test.go`:
+
+```
+func TestUpdateSingleField(t *testing.T) {
+
+	clearTable()
+	addProducts(1)
+
+	req, _ := http.NewRequest("GET", "/product/1", nil)
+	response := executeRequest(req)
+	var originalProduct map[string]interface{}
+	json.Unmarshal(response.Body.Bytes(), &originalProduct)
+
+	req, _ = http.NewRequest("PATCH", "/product/1/price/10", nil)
+	response = executeRequest(req)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+
+	req, _ = http.NewRequest("PATCH", "/product/1/name/Commander", nil)
+	response = executeRequest(req)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+
+	req, _ = http.NewRequest("GET", "/product/1", nil)
+	response = executeRequest(req)
+	var updatedProduct map[string]interface{}
+	json.Unmarshal(response.Body.Bytes(), &updatedProduct)
+
+	if updatedProduct["id"] != originalProduct["id"] {
+		t.Errorf("Expected the id to remain the same (%v). Got %v", originalProduct["id"], updatedProduct["id"])
+	}
+
+	if updatedProduct["name"] == originalProduct["name"] {
+		t.Errorf("Expected the name to change from '%v'", originalProduct["name"])
+	}
+
+	if updatedProduct["price"] == originalProduct["price"] {
+		t.Errorf("Expected the price to change from '%v'", originalProduct["price"])
+	}
+}
+```
+
+This always resulted in this error:
+
+```
+panic: runtime error: invalid memory address or nil pointer dereference [recovered]
+	panic: runtime error: invalid memory address or nil pointer dereference
+```
+
+After searching for a while, I found this link: https://medium.com/easyread/http-patch-method-ive-thought-the-wrong-way-c62ad281cb8
+
+Which basically stated that I do not use the PATCH request the correct way. As I do not pass any body but `nil` and keep the params in the url, this leads to the error stated above.
+What I should do instead is sending a request similar to this format:
+
+```
+PATCH /product/{id}
+[
+  { "op": "replace", "path": "/name", "value": "newName" }
+]
+```
+
+**Learning:** Apparently, I did not know what the patch request RFC standard looks like
+
+**Fix:** 
+As any field should be updateable, implementing this would be quite complex as also different operations can be specified. 
+
+
+There are quite a few libraries helping to create patch endpoints and their logic:
+https://github.com/evanphx/json-patch#create-and-apply-a-merge-patch
 
 
 ### Result:

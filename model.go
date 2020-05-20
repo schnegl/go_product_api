@@ -23,6 +23,13 @@ func (p *product) updateProduct(db *sql.DB) error {
 	return err
 }
 
+func updateProductField(db *sql.DB, id int, fieldName string, value string) error {
+	_, err :=
+		db.Exec("UPDATE products SET price = $2 WHERE id=$3", value, id)
+
+	return err
+}
+
 func (p *product) deleteProduct(db *sql.DB) error {
 	_, err := db.Exec("DELETE FROM products WHERE id=$1", p.ID)
 

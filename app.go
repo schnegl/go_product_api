@@ -106,6 +106,25 @@ func (a *App) updateProduct(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, p)
 }
 
+// updateField Updates a single field of a product
+func (a *App) updateField(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid product ID")
+		return
+	}
+	fieldName := vars["field"]
+	newValue := vars["value"]
+
+	if err := updateProductField(a.DB, id, fieldName, newValue); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, map[string]string{"result": "success"})
+}
+
 // deleteProduct Deletes an given product
 func (a *App) deleteProduct(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -155,6 +174,7 @@ func (a *App) initializeRoutes() {
 	a.Router.HandleFunc("/product", a.createProduct).Methods("POST")
 	a.Router.HandleFunc("/product/{id:[0-9]+}", a.getProduct).Methods("GET")
 	a.Router.HandleFunc("/product/{id:[0-9]+}", a.updateProduct).Methods("PUT")
+	a.Router.HandleFunc("/product/{id:[0-9]+}/{field}/{value}", a.updateField).Methods("PATCH")
 	a.Router.HandleFunc("/product/{id:[0-9]+}", a.deleteProduct).Methods("DELETE")
 	a.Router.HandleFunc("/order/66", a.executeOrder66).Methods("DELETE")
 }

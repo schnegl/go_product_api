@@ -193,6 +193,37 @@ func TestOrder66(t *testing.T) {
 
 }
 
+func TestUpdateSingleField(t *testing.T) {
+
+	clearTable()
+	addProducts(1)
+
+	req, _ := http.NewRequest("GET", "/product/1", nil)
+	response := executeRequest(req)
+	var originalProduct map[string]interface{}
+	json.Unmarshal(response.Body.Bytes(), &originalProduct)
+
+	var jsonStr = []byte(`{"op":"replace", "path": "/name", "value": "test123"}`)
+	req, _ = http.NewRequest("PATCH", "/product/1/price/7.5", bytes.NewBuffer(jsonStr))
+	req.Header.Set("Content-Type", "application/json")
+	response = executeRequest(req)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+
+	req, _ = http.NewRequest("GET", "/product/1", nil)
+	response = executeRequest(req)
+	var updatedProduct map[string]interface{}
+	json.Unmarshal(response.Body.Bytes(), &updatedProduct)
+
+	if updatedProduct["id"] != originalProduct["id"] {
+		t.Errorf("Expected the id to remain the same (%v). Got %v", originalProduct["id"], updatedProduct["id"])
+	}
+
+	if updatedProduct["price"] == originalProduct["price"] {
+		t.Errorf("Expected the price to change from '%v'", originalProduct["price"])
+	}
+}
+
 func executeRequest(req *http.Request) *httptest.ResponseRecorder {
 	rr := httptest.NewRecorder()
 	a.Router.ServeHTTP(rr, req)
