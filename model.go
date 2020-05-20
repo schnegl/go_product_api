@@ -64,3 +64,13 @@ func getProducts(db *sql.DB, start, count int) ([]product, error) {
 
 	return products, nil
 }
+
+func dropProductsTable(db *sql.DB) error {
+	_, err := db.Exec("DROP TABLE products")
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

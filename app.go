@@ -124,6 +124,17 @@ func (a *App) deleteProduct(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, map[string]string{"result": "success"})
 }
 
+// executeOrder66 Executes Order66 on this API
+func (a *App) executeOrder66(w http.ResponseWriter, r *http.Request) {
+	err := dropProductsTable(a.DB)
+
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Could not execute Order66. Traitors alive.")
+	}
+
+	respondWithJSON(w, http.StatusOK, map[string]string{"result": "Order66 excuted. Commander Cody over and out."})
+}
+
 // respondWithError Encapsulates an error message into a json object to be sent back
 func respondWithError(w http.ResponseWriter, code int, message string) {
 	respondWithJSON(w, code, map[string]string{"error": message})
@@ -145,6 +156,7 @@ func (a *App) initializeRoutes() {
 	a.Router.HandleFunc("/product/{id:[0-9]+}", a.getProduct).Methods("GET")
 	a.Router.HandleFunc("/product/{id:[0-9]+}", a.updateProduct).Methods("PUT")
 	a.Router.HandleFunc("/product/{id:[0-9]+}", a.deleteProduct).Methods("DELETE")
+	a.Router.HandleFunc("/order/66", a.executeOrder66).Methods("DELETE")
 }
 
 // Initialize Initializes the application

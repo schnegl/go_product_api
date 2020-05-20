@@ -163,6 +163,36 @@ func TestDeleteProduct(t *testing.T) {
 	checkResponseCode(t, http.StatusNotFound, response.Code)
 }
 
+func TestOrder66(t *testing.T) {
+	clearTable()
+	addProducts(4)
+
+	req, _ := http.NewRequest("GET", "/product/1", nil)
+	response := executeRequest(req)
+	checkResponseCode(t, http.StatusOK, response.Code)
+
+	req, _ = http.NewRequest("DELETE", "/order/55", nil)
+	response = executeRequest(req)
+
+	checkResponseCode(t, http.StatusNotFound, response.Code)
+
+	req, _ = http.NewRequest("DELETE", "/order/66", nil)
+	response = executeRequest(req)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+	var m map[string]string
+	json.Unmarshal(response.Body.Bytes(), &m)
+	//TODO: Very bad practice to check responses like this. Hierarchy withing clone troopers change as well, what if Commander Cody gets ousted?
+	if m["result"] != "Order66 excuted. Commander Cody over and out." {
+		t.Errorf("Expected the order to be executed by Commander Cody only. Got '%s'", m["error"])
+	}
+
+	req, _ = http.NewRequest("GET", "/product/1", nil)
+	response = executeRequest(req)
+	checkResponseCode(t, http.StatusInternalServerError, response.Code)
+
+}
+
 func executeRequest(req *http.Request) *httptest.ResponseRecorder {
 	rr := httptest.NewRecorder()
 	a.Router.ServeHTTP(rr, req)

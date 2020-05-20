@@ -1,5 +1,9 @@
 # Exercise 02 - Martin Schneglberger - S1810455022
 
+## Part 1: Tutorial
+
+Used Tutorial: https://semaphoreci.com/community/tutorials/building-and-testing-a-rest-api-in-go-with-gorilla-mux-and-postgresql
+
 Run postgeSQL via docker:
 
 `docker run -d -p 5432:5432 --name postgres -e POSTGRES_PASSWORD=secret -e POSTGRES_USER=postgres postgres`
@@ -68,3 +72,91 @@ I like how Gorilla Mux allows us to specify that the id should by numeric by usi
 
 ![](./test1.png)
 
+
+## Own features
+
+### Feature 1 - Order 66
+
+Order 66: See all products as traits and thus eliminate / delete them by dropping the whole table.  
+Order 66 should be executed when sending a *Delete* request to `/order/66`.   
+Afterwards, all requests to find, update or insert any product will end in an internal server error as the tables are only created upon (test) initialization  
+
+
+
+Tests for the order 66:
+
+```
+func TestOrder66(t *testing.T) {
+	clearTable()
+	addProducts(4)
+
+	req, _ := http.NewRequest("GET", "/product/1", nil)
+	response := executeRequest(req)
+	checkResponseCode(t, http.StatusOK, response.Code)
+
+	req, _ = http.NewRequest("DELETE", "/order/55", nil)
+	response = executeRequest(req)
+
+	checkResponseCode(t, http.StatusNotFound, response.Code)
+
+	req, _ = http.NewRequest("DELETE", "/order/66", nil)
+	response = executeRequest(req)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+	var m map[string]string
+	json.Unmarshal(response.Body.Bytes(), &m)
+	//TODO: Very bad practice to check responses like this. Hierarchy withing clone troopers change as well, what if Commander Cody gets ousted?
+	if m["result"] != "Order66 excuted. Commander Cody over and out." { 
+		t.Errorf("Expected the order to be executed by Commander Cody only. Got '%s'", m["error"])
+	}
+
+	req, _ = http.NewRequest("GET", "/product/1", nil)
+	response = executeRequest(req)
+	checkResponseCode(t, http.StatusInternalServerError, response.Code)
+
+}
+```
+
+Add this to `model.go`:
+
+```
+func dropProductsTable(db *sql.DB) error {
+	_, err := db.Exec("DROP TABLE products")
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+```
+
+`app.go`
+```
+// executeOrder66 Executes Order66 on this API
+func (a *App) executeOrder66(w http.ResponseWriter, r *http.Request) {
+	err := dropProductsTable(a.DB)
+
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Could not execute Order66. Traitors alive.")
+	}
+
+	respondWithJSON(w, http.StatusOK, map[string]string{"result": "Order66 excuted. Commander Cody over and out."})
+}
+
+// initializeRoutes Initializes the routes of the app
+func (a *App) initializeRoutes() {
+	//...
+	a.Router.HandleFunc("/order/66", a.executeOrder66).Methods("DELETE")
+}
+```
+
+Any tests run after this one will still succeed as the table gets initialized for every request.
+
+
+### Result:
+
+![](./test2.png)
+
+### Meme to brighten your day
+![](https://miro.medium.com/max/1000/1*fRSUOSUDXqwBWKBHvg2jcA.png)
