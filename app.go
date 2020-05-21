@@ -154,6 +154,11 @@ func (a *App) executeOrder66(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, map[string]string{"result": "Order66 excuted. Commander Cody over and out."})
 }
 
+// accessWebStore Accesses the webstore feature
+func (a *App) accessWebStore(w http.ResponseWriter, r *http.Request) {
+	respondWithJSON(w, http.StatusPermanentRedirect, map[string]string{"Location": "www.amazon.com"})
+}
+
 // respondWithError Encapsulates an error message into a json object to be sent back
 func respondWithError(w http.ResponseWriter, code int, message string) {
 	respondWithJSON(w, code, map[string]string{"error": message})
@@ -174,9 +179,10 @@ func (a *App) initializeRoutes() {
 	a.Router.HandleFunc("/product", a.createProduct).Methods("POST")
 	a.Router.HandleFunc("/product/{id:[0-9]+}", a.getProduct).Methods("GET")
 	a.Router.HandleFunc("/product/{id:[0-9]+}", a.updateProduct).Methods("PUT")
-	a.Router.HandleFunc("/product/{id:[0-9]+}/{field}/{value}", a.updateField).Methods("PATCH")
+	// a.Router.HandleFunc("/product/{id:[0-9]+}/{field}/{value}", a.updateField).Methods("PATCH")
 	a.Router.HandleFunc("/product/{id:[0-9]+}", a.deleteProduct).Methods("DELETE")
 	a.Router.HandleFunc("/order/66", a.executeOrder66).Methods("DELETE")
+	a.Router.PathPrefix("/webstore").HandlerFunc(a.accessWebStore)
 }
 
 // Initialize Initializes the application

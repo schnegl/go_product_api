@@ -259,7 +259,7 @@ panic: runtime error: invalid memory address or nil pointer dereference [recover
 After searching for a while, I found this link: https://medium.com/easyread/http-patch-method-ive-thought-the-wrong-way-c62ad281cb8
 
 Which basically stated that I do not use the PATCH request the correct way. As I do not pass any body but `nil` and keep the params in the url, this leads to the error stated above.
-What I should do instead is sending a request similar to this format:
+What I should do instead is sending a request body similar to this format:
 
 ```
 PATCH /product/{id}
@@ -273,14 +273,67 @@ PATCH /product/{id}
 **Fix:** 
 As any field should be updateable, implementing this would be quite complex as also different operations can be specified. 
 
-
 There are quite a few libraries helping to create patch endpoints and their logic:
 https://github.com/evanphx/json-patch#create-and-apply-a-merge-patch
+
+After some tries (like keeping the params in the url, but still send a request body), I run into more troubles as automatic type recognition does not work with the sql connector. Thus, I would need to cast the value for every field manually, which would acutally be either very bothersome, not sticking to the RFC standard again or nearly the same as the existing `updateProduct` method.
+
+Thus, I started a third feature (but kept this one in the code base, for **you** (<3>) to see that I understand *what is happening in this code* - just as the exercise says)
+I renamed the test to `NotAWorkingTestUpdateSingleField` so that it does not get executed.
+
+### Feature 3 - Redirect
+
+Idea: Lets say one of our features - the webshop - got moved to another location. The url of this moved store is now available under the little--known URL www.amazon.com, which is a rather small family--owned company making just enough money for Jeff to do his daily groceries. As we still want Jeff to be able to earn himself a living, we will tell any connecting user the new address of the webstore out of good will.
+
+Thus, any request to `/webstore` should be anwered with a redirect to www.amazon.com.
+
+Code in `app.go`
+```
+// accessWebStore Accesses the webstore feature
+func (a *App) accessWebStore(w http.ResponseWriter, r *http.Request) {
+	respondWithJSON(w, http.StatusPermanentRedirect, map[string]string{"Location": "www.amazon.com"})
+}
+
+// initializeRoutes Initializes the routes of the app
+func (a *App) initializeRoutes() {
+	//...
+	a.Router.PathPrefix("/webstore").HandlerFunc(a.accessWebStore)
+}
+```
+
+In the above code, the handling is now a bit different as with the other routes. We now use a `PathPrefix` matcher in order to match any path concerning the webstore.
+Thus, */webstore/chart/1* gets handled with the same function as */webstore/payment*, */webstore/* and */webstore*.   
+Additionally, by not restricting the route to any `Method`, it does not matter which request (GET, PATCH, PUT, DELETE, ...) the client sends.
+
+The tests for this feature look like this:
+
+```
+func TestRedirectWebstore(t *testing.T) {
+	req, _ := http.NewRequest("POST", "/webstore/1", nil)
+	response := executeRequest(req)
+	checkResponseCode(t, http.StatusPermanentRedirect, response.Code)
+
+	req, _ = http.NewRequest("GET", "/webstore", nil)
+	response = executeRequest(req)
+	checkResponseCode(t, http.StatusPermanentRedirect, response.Code)
+
+	req, _ = http.NewRequest("PUT", "/webstore/chart/1", nil)
+	response = executeRequest(req)
+	checkResponseCode(t, http.StatusPermanentRedirect, response.Code)
+
+	req, _ = http.NewRequest("DELETE", "/webstore/payment/3", nil)
+	response = executeRequest(req)
+	checkResponseCode(t, http.StatusPermanentRedirect, response.Code)
+
+	var m map[string]string
+	json.Unmarshal(response.Body.Bytes(), &m)
+	if m["Location"] != "www.amazon.com" {
+		t.Errorf("Got the wrong redirect location. Got '%s', expected '%s", m["error"], "www.amazon.com")
+	}
+}
+```
 
 
 ### Result:
 
 ![](./test2.png)
-
-### Meme to brighten your day
-![](https://miro.medium.com/max/1000/1*fRSUOSUDXqwBWKBHvg2jcA.png)
