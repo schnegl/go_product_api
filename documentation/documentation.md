@@ -86,7 +86,7 @@ I like how Gorilla Mux allows us to specify that the id should by numeric by usi
 
 ### Feature 1 - Order 66 (I hope you saw Star Wars Episode III)
 
-![](https://i.pinimg.com/originals/f4/8f/f6/f48ff6788b636c39117b0e8fb0b4f3d0.jpg)
+![](https://vignette.wikia.nocookie.net/swfanon/images/f/f2/Order_66.jpg/revision/latest/scale-to-width-down/340?cb=20140524095908&path-prefix=de)
 
 Idea Order 66: Treat all products as traits and thus eliminate / delete them by dropping the whole table.  
 Order 66 should be executed when sending a *Delete* request to `/order/66`.   
@@ -334,6 +334,6 @@ func TestRedirectWebstore(t *testing.T) {
 ```
 
 
-### Result:
+## Result:
 
-![](./test2.png)
+![](./tests2.png)
