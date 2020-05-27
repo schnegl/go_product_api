@@ -19,7 +19,7 @@ Resulted in:
 exit status 1
 ```
 
-Might forgot to specify go language version as well as the path in which the go test command is executed  
+Might forgot to specify go language version, but this should not be the problem
 
 https://docs.travis-ci.com/user/database-setup/#postgresql 
 
@@ -48,9 +48,12 @@ services:
   - postgresql
 
 script:
-  - go test -v ./..
+  - go test -v
 ```
 
 And environment settings:
 
 ![](./env_travis.png)
+
+
+I like how the environment is recreated from scratch (thus pulling all the packages) upon each build.
