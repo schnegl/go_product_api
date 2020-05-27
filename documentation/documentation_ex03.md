@@ -56,4 +56,9 @@ And environment settings:
 ![](./env_travis.png)
 
 
-I like how the environment is recreated from scratch (thus pulling all the packages) upon each build.
+I like how the environment is recreated from scratch (thus pulling all the packages) upon each build (and each running in a fresh VM and cloning the repo into it)
+
+
+AAAAANNNND: Got Ya!
+
+![](./travis_success.png)
